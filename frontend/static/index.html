@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pantry Chef Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --accent: #0d9488;
+    --accent-dark: #0f766e;
+    --accent-light: #ccfbf1;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  /* --- Markdown Body Styling --- */
+  .markdown-body { line-height: 1.6; }
+  .markdown-body p { margin: 0 0 0.5rem 0; }
+  .markdown-body p:last-child { margin-bottom: 0; }
+  .markdown-body ul, .markdown-body ol { margin: 0.35rem 0 0.65rem 0; padding-left: 1.25rem; }
+  .markdown-body li { margin-bottom: 0.25rem; }
+  .markdown-body strong { color: var(--accent-dark); font-weight: 700; }
+  .markdown-body code { background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.875em; font-family: monospace; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { font-weight: 700; margin: 0.6rem 0 0.3rem; color: var(--text-main); }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 10px rgba(13, 148, 136, 0.25);
+  }
+
+  .header-titles h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+  }
+
+  .header-titles p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-dark);
+    background: var(--accent-light);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.4); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(13, 148, 136, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+  }
+
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    max-width: 840px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar */
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+  #log::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  #log::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* Message Row & Avatars */
+  .msg {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-start;
+    animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .msg.user {
+    flex-direction: row-reverse;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .msg.agent .avatar {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+  }
+
+  .msg.user .avatar {
+    background: #475569;
+    color: #fff;
+  }
+
+  .msg-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 82%;
+  }
+
+  .msg.user .msg-wrapper {
+    align-items: flex-end;
+  }
+
+  .msg-meta {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+    padding: 0 0.2rem;
+  }
+
+  .bubble {
+    padding: 0.85rem 1.1rem;
+    border-radius: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    box-shadow: var(--shadow-sm);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg.user .bubble {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #ffffff;
+    border: none;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+  }
+
+  .msg.agent .bubble {
+    border-top-left-radius: 4px;
+  }
+
+  /* When the reply is an A2UI card, drop the bubble chrome so the card stands alone. */
+  .bubble.rich {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  /* --- A2UI component styles --- */
+  .a2card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-md);
+    max-width: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .a2card:hover {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .a2card + .a2card, .a2col > .a2card { margin-top: 0.75rem; }
+  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .a2row.between { justify-content: space-between; }
+  .a2text { margin: 0; line-height: 1.5; color: var(--text-main); }
+  .a2text.a2-h1 { font-size: 1.4rem; font-weight: 800; color: var(--text-main); }
+  .a2text.a2-h2 { font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+  .a2text.a2-h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
+  .a2text.a2-h4 { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
+  .a2text.a2-caption { font-size: 0.85rem; color: var(--text-muted); }
+  .a2divider { border: none; border-top: 1px solid var(--border); margin: 0.6rem 0; width: 100%; }
+  .a2img { max-width: 100%; border-radius: 12px; display: block; box-shadow: var(--shadow-sm); }
+  .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-size: 1.25rem; line-height: 1; vertical-align: middle; color: var(--accent); }
+
+  /* --- Footer & Prompt Controls --- */
+  .footer-container {
+    background: #ffffff;
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 1.5rem 1.25rem;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  .prompts-wrapper {
+    max-width: 840px;
+    margin: 0 auto 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .prompts-wrapper::-webkit-scrollbar { height: 4px; }
+  .prompts-wrapper::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+  .chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .chip:hover {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  form {
+    max-width: 840px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0.6rem;
+    background: var(--bg);
+    padding: 0.35rem 0.35rem 0.35rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 28px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  form:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    background: #ffffff;
+  }
+
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    outline: none;
+  }
+
+  input::placeholder {
+    color: #94a3b8;
+  }
+
+  button {
+    padding: 0.65rem 1.25rem;
+    border: none;
+    border-radius: 22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #ffffff;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 2px 6px rgba(13, 148, 136, 0.3);
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  button:hover {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="header-icon">👨‍🍳</div>
+    <div class="header-titles">
+      <h1>Pantry Chef Agent</h1>
+      <p>Smart Inventory, Recipes & Meal Planning</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-dot"></div>
+    <span>Ready to cook</span>
+  </div>
+</header>
+
+<div id="log"></div>
+
+<div class="footer-container">
+  <div class="prompts-wrapper">
+    <button type="button" class="chip" onclick="sendPrompt('Check what\'s in my pantry')">🥦 Check my pantry</button>
+    <button type="button" class="chip" onclick="sendPrompt('Suggest a healthy dinner recipe')">🍝 Suggest a recipe</button>
+    <button type="button" class="chip" onclick="sendPrompt('Calculate nutrition for 4 servings of pasta')">📊 Calculate macros & scale</button>
+  </div>
+  <form id="form">
+    <input id="input" placeholder="Ask about recipes, ingredients, or nutrition…" autocomplete="off" autofocus>
+    <button type="submit">
+      <span>Send</span>
+      <span class="material-symbols-outlined" style="font-size:1.1rem; color:#fff;">send</span>
+    </button>
+  </form>
+</div>
+
+<script>
+const log = document.getElementById("log");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+
+function sendPrompt(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function bubble(who) {
+  const m = el("div", "msg " + who);
+  const avatar = el("div", "avatar", who === "user" ? "👤" : "👨‍🍳");
+  const wrapper = el("div", "msg-wrapper");
+  const meta = el("div", "msg-meta", who === "user" ? "You" : "Pantry Chef");
+  const b = el("div", "bubble");
+
+  wrapper.appendChild(meta);
+  wrapper.appendChild(b);
+
+  m.appendChild(avatar);
+  m.appendChild(wrapper);
+
+  log.appendChild(m);
+  log.scrollTop = log.scrollHeight;
+  return b;
+}
+
+/* ----------------------------------------------------------------------------
+ * A2UI mini-renderer (v0.8 Basic Catalog subset).
+ * Renders Card / Column / Row / Text / Divider / List / Image / Icon.
+ * -------------------------------------------------------------------------- */
+
+function boundStr(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v.literalString === "string") return v.literalString;
+  return "";
+}
+
+function childIds(props) {
+  const ids = [];
+  if (props && typeof props.child === "string") ids.push(props.child);
+  const ch = props && props.children;
+  if (ch && Array.isArray(ch.explicitList)) for (const c of ch.explicitList) if (typeof c === "string") ids.push(c);
+  return ids;
+}
+
+function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
+
+function buildNode(id, comps, seen) {
+  if (!id || seen.has(id)) return null;
+  seen.add(id);
+  const spec = comps[id];
+  if (!spec || typeof spec !== "object") return null;
+  const type = Object.keys(spec)[0];
+  const props = spec[type] || {};
+  const kids = () => childIds(props).map(cid => buildNode(cid, comps, seen)).filter(Boolean);
+
+  switch (type) {
+    case "Card": {
+      const card = el("div", "a2card");
+      for (const k of kids()) card.appendChild(k);
+      return card;
+    }
+    case "Column": {
+      const col = el("div", "a2col");
+      for (const k of kids()) col.appendChild(k);
+      return col;
+    }
+    case "Row": {
+      const row = el("div", "a2row");
+      if (props.distribution === "spaceBetween" || props.distribution === "DISTRIBUTION_SPACE_BETWEEN") row.classList.add("between");
+      for (const k of kids()) row.appendChild(k);
+      return row;
+    }
+    case "Text": {
+      const text = boundStr(props.text);
+      const hint = (props.usageHint || "BODY").toLowerCase();
+      let cls = "a2text";
+      if (hint.includes("h1") || hint === "heading_1") cls += " a2-h1";
+      else if (hint.includes("h2") || hint === "heading_2") cls += " a2-h2";
+      else if (hint.includes("h3") || hint === "heading_3") cls += " a2-h3";
+      else if (hint.includes("h4") || hint === "heading_4") cls += " a2-h4";
+      else if (hint.includes("caption")) cls += " a2-caption";
+      return el("p", cls, text);
+    }
+    case "Divider":
+      return el("hr", "a2divider");
+    case "List": {
+      const list = el("div", "a2col");
+      for (const k of kids()) list.appendChild(k);
+      return list;
+    }
+    case "Image": {
+      const url = boundStr(props.url);
+      if (!/^https?:\/\//i.test(url)) return null;
+      const img = el("img", "a2img");
+      img.src = url;
+      img.alt = boundStr(props.alt) || "Image";
+      return img;
+    }
+    case "Icon": {
+      const name = iconName(props.name || props.iconName);
+      return el("span", "material-symbols-outlined", name);
+    }
+    default:
+      return null;
+  }
+}
+
+function renderSurface(messages, container) {
+  const comps = {};
+  for (const m of messages) {
+    const su = m && m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) {
+      for (const c of su.components) {
+        if (c && c.id && c.component) comps[c.id] = c.component;
+      }
+    }
+  }
+
+  let rootId = null;
+  for (const m of messages) {
+    const br = m && m.beginRendering;
+    if (br && br.root) { rootId = br.root; break; }
+  }
+
+  if (!rootId) {
+    const keys = Object.keys(comps);
+    if (keys.length) rootId = keys[0];
+  }
+
+  if (!rootId) return false;
+
+  const node = buildNode(rootId, comps, new Set());
+  if (!node) return false;
+
+  container.appendChild(node);
+  return true;
+}
+
+function flattenText(messages) {
+  const out = [];
+  for (const m of messages) {
+    const su = m && m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
+  }
+  return out.join("\n").trim();
+}
+
+function renderReply(b, parts) {
+  b.textContent = "";
+  const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+  const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+
+  const textStr = texts.join("\n").trim();
+  if (textStr) {
+    const mdWrapper = el("div", "markdown-body");
+    if (window.marked) {
+      mdWrapper.innerHTML = marked.parse(textStr);
+    } else {
+      mdWrapper.textContent = textStr;
+    }
+    b.appendChild(mdWrapper);
+  }
+
+  if (a2ui.length) {
+    b.classList.add("rich");
+    if (!renderSurface(a2ui, b)) b.appendChild(el("div", null, flattenText(a2ui) || "(no card content)"));
+  }
+  if (!b.childNodes.length) b.textContent = "(no response)";
+  log.scrollTop = log.scrollHeight;
+}
+
+form.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  bubble("user").textContent = text;
+  input.value = "";
+  const b = bubble("agent"); b.textContent = "…";
+  try {
+    const res = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { throw new Error(`Server returned non-JSON (HTTP ${res.status}). ${raw.slice(0, 300)}`); }
+    renderReply(b, data.parts || []);
+  } catch (e) {
+    b.textContent = "Error: " + e.message;
+  }
+});
+</script>
+</body>
+</html>
